@@ -17,7 +17,8 @@ import reactor.core.publisher.Flux;
 public class Example {
      
     public static void main(String[] args) throws InterruptedException {
-        Rql.from(Flux.interval(Duration.ofSeconds(1)).map(i->new Item(i)),"select i , name from stream where (i >= 10) and name is not null")
+        Rql.from(Flux.interval(Duration.ofSeconds(1)).map(i->new Item(i)),"select i , name from stream where (i >= 10) and name is not null limit 10")
+                
                 .doOnError(thr->thr.printStackTrace())
                 .subscribe(System.out::println);
         Thread.sleep(10000000);

@@ -20,6 +20,7 @@ public class SelectNode implements RqlNode{
     private String tableName;
     private RqlBoolNode exp;
     private int colIndex = 0;
+    private long limit = -1;
     public SelectNode setTableName(String tableName) {
         this.tableName = tableName;
         return this;
@@ -33,10 +34,14 @@ public class SelectNode implements RqlNode{
     
     public Flux<JsonObject> flux(Flux<JsonObject> sourceFlux)
     {
-        if(this.exp == null)
-            return sourceFlux;
-        else
-            return sourceFlux.filter(o->this.exp.eval(o)).map(input->expand(input));
+        Flux<JsonObject> emitFlux = sourceFlux;
+        if(exp != null)
+            emitFlux = sourceFlux.filter(o->this.exp.eval(o));
+                                
+        emitFlux = emitFlux.map(input->expand(input));
+        if(limit > -1)
+            emitFlux = emitFlux.take(limit);
+        return emitFlux;
     }
     
     public SelectNode addColumn(ColumnNode node)
@@ -47,6 +52,11 @@ public class SelectNode implements RqlNode{
         return this;
     }
     
+    public SelectNode setLimit(String limit)
+    {
+        this.limit = Long.valueOf(limit);
+        return this;
+    }
     public JsonObject expand(JsonObject Input)
     {
         JsonObject out = new JsonObject();

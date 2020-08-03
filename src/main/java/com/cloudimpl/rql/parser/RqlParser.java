@@ -46,7 +46,7 @@ public class RqlParser extends BaseParser<RqlNode> {
     final Rule COMMA = Terminal(",");
     
     public Rule selectQuery() {
-        return Sequence(select(), selectExpressionList(), fromClause(), whereClause(), EOI);
+        return Sequence(select(), selectExpressionList(), fromClause(), whereClause(),Optional(limitExpression()), EOI);
     }
 
     Rule selectExpressionList()
@@ -98,6 +98,10 @@ public class RqlParser extends BaseParser<RqlNode> {
         return Sequence(IgnoreCase("max"),OB,Identifier(true),CB);
     }
     
+    Rule limitExpression()
+    {
+        return Sequence(StringIgnoreCaseWS("limit"),IntegerLiteral(),push(((SelectNode)pop()).setLimit(match())));
+    }
     public Rule fromClause() {
         return Sequence(from(), Identifier(true), push(((SelectNode)pop()).setTableName(match())));
     }
@@ -361,11 +365,5 @@ public class RqlParser extends BaseParser<RqlNode> {
         }
         SelectNode node = (SelectNode) result.resultValue;
         return node;
-    }
-
-    public static void main(String[] args) {
-        SelectNode node = RqlParser.parse("select * from msg where a = 1 and b  > 3");
-
-        System.out.println(node);
     }
 }
