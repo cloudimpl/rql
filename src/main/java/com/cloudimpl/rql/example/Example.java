@@ -21,7 +21,7 @@ public class Example {
                 .doOnError(thr->thr.printStackTrace())
                 .subscribe(System.out::println);
         
-        Rql.from(Flux.interval(Duration.ofSeconds(1)).map(i->new Item(i)),"select name,school,sum(i) as total from stream window tumbling(size 10 seconds) group by name,school")             
+        Rql.from(Flux.interval(Duration.ofSeconds(1)).map(i->new Item(i)),"select name,school,max(i) as max,sum(i) as total,min(i) as min from stream window tumbling(size 10 seconds) group by name,school")             
                 .doOnError(thr->thr.printStackTrace())
                 .subscribe(System.out::println);
         Thread.sleep(10000000);

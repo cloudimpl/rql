@@ -12,6 +12,9 @@ import com.cloudimpl.rql.ColumnNode;
 import com.cloudimpl.rql.ConstNode;
 import com.cloudimpl.rql.FieldCheckNode;
 import com.cloudimpl.rql.GroupByNode;
+import com.cloudimpl.rql.MaxFunction;
+import com.cloudimpl.rql.MinFunction;
+import com.cloudimpl.rql.OrderByNode;
 import com.cloudimpl.rql.RelNode;
 import com.cloudimpl.rql.RqlBoolNode;
 import com.cloudimpl.rql.RqlException;
@@ -95,11 +98,11 @@ public class RqlParser extends BaseParser<RqlNode> {
     }
 
     Rule maxFunction() {
-        return Sequence(IgnoreCase("max"), OB, Identifier(true), CB);
+        return Sequence(IgnoreCase("max"), OB, Identifier(true),push(new MaxFunction(match())), CB).label("max");
     }
 
     Rule minFunction() {
-        return Sequence(IgnoreCase("min"), OB, Identifier(true), CB);
+        return Sequence(IgnoreCase("min"), OB, Identifier(true),push(new MinFunction(match())), CB).label("min");
     }
 
     Rule sumFunction() {
@@ -131,6 +134,16 @@ public class RqlParser extends BaseParser<RqlNode> {
                  ZeroOrMore(Sequence(COMMA, Identifier(true), push(pop(GroupByNode.class).addField(match().trim())))));
     }
 
+    Rule orderByExpression(){
+        return Sequence(StringIgnoreCaseWS("order"),StringIgnoreCaseWS("by"),push(new OrderByNode()),orderByList(),push(pop(1, SelectNode.class)
+                .setOrderBy(pop(OrderByNode.class))));
+    }
+    
+    Rule orderByList() {
+        return Sequence(Identifier(true), push(pop(OrderByNode.class).addField(match().trim())),
+                 ZeroOrMore(Sequence(COMMA, Identifier(true), push(pop(OrderByNode.class).addField(match().trim())))));
+    }
+    
     <T> T pop(Class<T> cls) {
         return cls.cast(super.pop());
     }

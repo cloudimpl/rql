@@ -24,6 +24,7 @@ public class SelectNode implements RqlNode {
     private WindowNode windowNode;
     private RqlBoolNode exp;
     private GroupByNode groupBy;
+    private OrderByNode orderBy;
     private int colIndex = 0;
     private long limit = -1;
 
@@ -44,6 +45,11 @@ public class SelectNode implements RqlNode {
 
     public SelectNode setGroupBy(GroupByNode groupBy) {
         this.groupBy = groupBy;
+        return this;
+    }
+
+    public SelectNode setOrderBy(OrderByNode orderBy) {
+        this.orderBy = orderBy;
         return this;
     }
 
@@ -85,9 +91,8 @@ public class SelectNode implements RqlNode {
             } else if (!colList.isEmpty() && !groupBy.groupByFields.containsAll(colList)) {
                 throw new RqlException("columns " + colList.removeAll(groupBy.groupByFields) + " should on the group by list");
             }
-        }else if(groupBy != null)
-        {
-             throw new RqlException("columns " + colList.removeAll(groupBy.groupByFields) + " should on the group by list");
+        } else if (groupBy != null) {
+            throw new RqlException("columns " + colList.removeAll(groupBy.groupByFields) + " should on the group by list");
         }
 
         return this;

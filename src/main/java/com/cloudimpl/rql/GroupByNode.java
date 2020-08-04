@@ -21,7 +21,7 @@ public class GroupByNode implements RqlNode{
     
     public GroupByNode addField(String field)
     {
-        this.groupByFields.add(field);
+        this.groupByFields.add(field.trim());
         return this;
     }
     
