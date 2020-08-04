@@ -6,17 +6,13 @@
 package com.cloudimpl.rql;
 
 import com.google.gson.JsonObject;
-import java.util.List;
+import reactor.core.publisher.Flux;
 
 /**
  *
  * @author nuwansa
  */
-public class AllColumnNode extends ColumnNode{
-
-    @Override
-    void eval(List<JsonObject> input, JsonObject output) {
-        input.get(0).entrySet().forEach(e->output.add(e.getKey(),e.getValue()));
-    }
+public abstract class WindowNode implements RqlNode{
     
+    public abstract Flux<Flux<JsonObject>> window(Flux<JsonObject> inputFlux);
 }

@@ -6,6 +6,7 @@
 package com.cloudimpl.rql;
 
 import com.google.gson.JsonObject;
+import java.util.List;
 
 /**
  *
@@ -27,5 +28,5 @@ public abstract class ColumnNode implements RqlNode{
     }
     
     
-    abstract Object eval(JsonObject input,JsonObject output);
+    abstract void eval(List<JsonObject> input,JsonObject output);
 }

@@ -6,6 +6,7 @@
 package com.cloudimpl.rql;
 
 import com.google.gson.JsonObject;
+import java.util.List;
 
 /**
  *
@@ -20,9 +21,8 @@ public class ValueNode extends ColumnNode{
     }
     
     @Override
-    public Object eval(JsonObject input,JsonObject output) {
+    public void eval(List<JsonObject> input,JsonObject output) {
         output.addProperty(getAlias(), value);
-        return value;
     }
     
 }

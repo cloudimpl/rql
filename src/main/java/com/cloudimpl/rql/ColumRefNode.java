@@ -8,6 +8,7 @@ package com.cloudimpl.rql;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import java.util.List;
 
 /**
  *
@@ -18,19 +19,18 @@ public class ColumRefNode extends ColumnNode{
 
     public ColumRefNode(String columnName) {
         this.columnName = columnName.trim();
-        setAlias(columnName);
+        setAlias(this.columnName);
         
     }
     
     @Override
-    public Object eval(JsonObject input,JsonObject output) {
-        JsonElement el = input.get(columnName);
+    public void eval(List<JsonObject> input,JsonObject output) {
+        JsonElement el = input.get(0).get(columnName);
         if(el != null)
             output.add(getAlias(), el);
         else
             output.add(getAlias(), JsonNull.INSTANCE);
         
-        return el;
     }
     
 }

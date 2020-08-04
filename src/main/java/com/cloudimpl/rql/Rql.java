@@ -21,4 +21,9 @@ public class Rql {
         Flux<JsonObject> src = source.map(o->GsonCodec.encodeToJson(o).getAsJsonObject());
         return select.flux(src);
     }
+    
+    
+    public static void main(String[] args) {
+        SelectNode select = RqlParser.parse("select * from rql window tumbling(size 6 hour) where a = 'abc' group by name,abs");
+    }
 }

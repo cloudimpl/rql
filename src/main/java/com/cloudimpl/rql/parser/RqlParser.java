@@ -11,11 +11,17 @@ import com.cloudimpl.rql.ColumRefNode;
 import com.cloudimpl.rql.ColumnNode;
 import com.cloudimpl.rql.ConstNode;
 import com.cloudimpl.rql.FieldCheckNode;
+import com.cloudimpl.rql.GroupByNode;
 import com.cloudimpl.rql.RelNode;
 import com.cloudimpl.rql.RqlBoolNode;
+import com.cloudimpl.rql.RqlException;
 import com.cloudimpl.rql.RqlNode;
 import com.cloudimpl.rql.SelectNode;
+import com.cloudimpl.rql.SumFunction;
+import com.cloudimpl.rql.TimeUnitNode;
 import com.cloudimpl.rql.VarNode;
+import com.cloudimpl.rql.WindowNode;
+import com.cloudimpl.rql.WindowTumblingNode;
 import org.parboiled.BaseParser;
 import org.parboiled.Parboiled;
 import org.parboiled.Rule;
@@ -44,94 +50,132 @@ public class RqlParser extends BaseParser<RqlNode> {
     final Rule OB = Terminal("(");
     final Rule CB = Terminal(")");
     final Rule COMMA = Terminal(",");
-    
+
     public Rule selectQuery() {
-        return Sequence(select(), selectExpressionList(), fromClause(), whereClause(),Optional(limitExpression()), EOI);
+        return Sequence(select(), selectExpressionList(), fromClause(),
+                 Optional(windowExpression()), whereClause(), Optional(groupByExpression()), Optional(limitExpression()), EOI
+                ,push(pop(SelectNode.class).complete()));
     }
 
-    Rule selectExpressionList()
-    {
-        return Sequence(selectExpression(),ZeroOrMore(Sequence(COMMA,selectExpression())));
+    Rule selectExpressionList() {
+        return Sequence(selectExpression(), ZeroOrMore(Sequence(COMMA, selectExpression())));
     }
-    
-    Rule selectExpression(){
+
+    Rule selectExpression() {
         return Sequence(FirstOf(
                 selectAll(),
-                Sequence(Identifier(false),Ch('.'),asterisk()),
+                Sequence(Identifier(false), Ch('.'), asterisk()),
                 selectTermWithAlias()
-        ),push(((SelectNode)pop(1)).addColumn((ColumnNode)pop())));
+        ), push(pop(1, SelectNode.class).addColumn(pop(ColumnNode.class))));
     }
-    
-    Rule selectTermWithAlias(){
-        return Sequence(selectTerm(),Optional(Sequence(StringIgnoreCaseWS("as"),Identifier(true),push(((ColumnNode)pop()).setAlias(match().trim()))))
-               );
-    }
-    
-    Rule selectTerm()
-    {
-        return FirstOf(
-                literal(),
-                selectColumnRef(),
-                selectFunction()
-                );
-    }
-    
-    Rule selectFunction()
-    {
-        return FirstOf(
-                maxFunction(),
-                minFunction()    
+
+    Rule selectTermWithAlias() {
+        return Sequence(selectTerm(), Optional(Sequence(StringIgnoreCaseWS("as"), Identifier(true), push(pop(ColumnNode.class).setAlias(match().trim()))))
         );
     }
-    
-    Rule selectColumnRef()
-    {
-        return Sequence(Identifier(true),push(new ColumRefNode(match())));
+
+    Rule selectTerm() {
+        return FirstOf(
+                literal(),
+                selectFunction(),
+                selectColumnRef()          
+        );
     }
-    Rule maxFunction()
-    {
-        return Sequence(IgnoreCase("max"),OB,Identifier(true),CB);
+
+    Rule selectFunction() {
+        return FirstOf(
+                maxFunction(),
+                minFunction(),
+                sumFunction()
+        );
     }
-    
-    Rule minFunction()
-    {
-        return Sequence(IgnoreCase("max"),OB,Identifier(true),CB);
+
+    Rule selectColumnRef() {
+        return Sequence(Identifier(true), push(new ColumRefNode(match())));
     }
-    
-    Rule limitExpression()
-    {
-        return Sequence(StringIgnoreCaseWS("limit"),IntegerLiteral(),push(((SelectNode)pop()).setLimit(match())));
+
+    Rule maxFunction() {
+        return Sequence(IgnoreCase("max"), OB, Identifier(true), CB);
     }
+
+    Rule minFunction() {
+        return Sequence(IgnoreCase("min"), OB, Identifier(true), CB);
+    }
+
+    Rule sumFunction() {
+        return Sequence(IgnoreCase("sum"), OB, Identifier(true),push(new SumFunction(match())), CB).label("sum");
+    }
+
+    Rule limitExpression() {
+        return Sequence(StringIgnoreCaseWS("limit"), IntegerLiteral(), push(pop(SelectNode.class).setLimit(match())));
+    }
+
+    Rule windowExpression() {
+        return Sequence(StringIgnoreCaseWS("WINDOW"), windowTumbling(), push(pop(1, SelectNode.class).setWindowNode(pop(WindowNode.class))));
+    }
+
+    Rule windowTumbling() {
+        return Sequence(StringIgnoreCaseWS("TUMBLING"), OB, StringIgnoreCaseWS("size"),
+                 IntegerLiteral(), push(new ConstNode(match())), Spacing(), windowTimeUnit(), CB,
+                 push(new WindowTumblingNode(pop(1, ConstNode.class).getValue(), pop(TimeUnitNode.class).getTimeUnit()))
+        );
+    }
+
+    Rule groupByExpression() {
+        return Sequence(StringIgnoreCaseWS("group"), StringIgnoreCaseWS("by"), push(new GroupByNode()), groupByList(), push(pop(1, SelectNode.class)
+                .setGroupBy(pop(GroupByNode.class))));
+    }
+
+    Rule groupByList() {
+        return Sequence(Identifier(true), push(pop(GroupByNode.class).addField(match().trim())),
+                 ZeroOrMore(Sequence(COMMA, Identifier(true), push(pop(GroupByNode.class).addField(match().trim())))));
+    }
+
+    <T> T pop(Class<T> cls) {
+        return cls.cast(super.pop());
+    }
+
+    <T> T pop(int index, Class<T> cls) {
+        return cls.cast(super.pop(index));
+    }
+
+    Rule windowTimeUnit() {
+        return Sequence(
+                FirstOf(StringIgnoreCaseWS("seconds"), StringIgnoreCaseWS("second"),
+                        StringIgnoreCaseWS("minutes"), StringIgnoreCaseWS("minute"),
+                        StringIgnoreCaseWS("hours"), StringIgnoreCaseWS("hour"),
+                        StringIgnoreCaseWS("days"), StringIgnoreCaseWS("day")
+                ), push(new TimeUnitNode(match())));
+    }
+
     public Rule fromClause() {
-        return Sequence(from(), Identifier(true), push(((SelectNode)pop()).setTableName(match())));
+        return Sequence(from(), Identifier(true), push(((SelectNode) pop()).setTableName(match())));
     }
 
     public Rule whereClause() {
-        return Optional(Sequence(where(), BooleanExpression(),push(((SelectNode)pop(1)).setExpression((RqlBoolNode) pop()))));
+        return Optional(Sequence(where(), BooleanExpression(), push(pop(1, SelectNode.class).setExpression(pop(RqlBoolNode.class)))));
     }
 
     public Rule BooleanExpression() {
-        return Sequence(BooleanTerm(),Optional(OR,BooleanTerm(),push(new BinNode((RqlBoolNode)pop(1),BinNode.Op.OR, (RqlBoolNode)pop()))));
+        return Sequence(BooleanTerm(), Optional(OR, BooleanTerm(), push(new BinNode(pop(1, RqlBoolNode.class), BinNode.Op.OR, pop(RqlBoolNode.class)))));
     }
 
-    Rule BooleanFactor()
-    {
-        return FirstOf(BooleanFieldExp(),Parens());
+    Rule BooleanFactor() {
+        return FirstOf(BooleanFieldExp(), Parens());
     }
-    
-    Rule BooleanTerm()
-    {
-       return Sequence(BooleanFactor(),Optional(AND,BooleanFactor(),push(new BinNode((RqlBoolNode)pop(1),BinNode.Op.AND, (RqlBoolNode)pop()))));
+
+    Rule BooleanTerm() {
+        return Sequence(BooleanFactor(), Optional(AND, BooleanFactor(), push(new BinNode(pop(1, RqlBoolNode.class), BinNode.Op.AND, pop(RqlBoolNode.class)))));
     }
-    
+
     public Rule BooleanFieldExp() {
-        return Sequence(Identifier(true),push(new VarNode(match())), FirstOf(
-                Sequence(EQ, FieldValueExp(), push(new RelNode(((VarNode)pop(1)).getVar(), RelNode.Op.EQ, (ConstNode) pop()))),
-                Sequence(NE, FieldValueExp(), push(new RelNode(((VarNode)pop(1)).getVar(), RelNode.Op.NE, (ConstNode) pop()))),
-                Sequence(GT, FieldValueExp(), push(new RelNode(((VarNode)pop(1)).getVar(), RelNode.Op.GT, (ConstNode) pop()))),
-                Sequence(GTE, FieldValueExp(), push(new RelNode(((VarNode)pop(1)).getVar(), RelNode.Op.GTE, (ConstNode) pop()))),
-                Sequence(LT, FieldValueExp(), push(new RelNode(((VarNode)pop(1)).getVar(), RelNode.Op.LT, (ConstNode) pop()))),
-                Sequence(LTE, FieldValueExp(), push(new RelNode(((VarNode)pop(1)).getVar(), RelNode.Op.LTE, (ConstNode) pop()))),
+        return Sequence(Identifier(true), push(new VarNode(match())), FirstOf(
+                Sequence(EQ, FieldValueExp(), push(new RelNode(pop(1, VarNode.class).getVar(), RelNode.Op.EQ, pop(ConstNode.class)))),
+                Sequence(NE, FieldValueExp(), push(new RelNode(pop(1, VarNode.class).getVar(), RelNode.Op.NE, pop(ConstNode.class)))),
+                Sequence(GT, FieldValueExp(), push(new RelNode(pop(1, VarNode.class).getVar(), RelNode.Op.GT, pop(ConstNode.class)))),
+                Sequence(GTE, FieldValueExp(), push(new RelNode(pop(1, VarNode.class).getVar(), RelNode.Op.GTE, pop(ConstNode.class)))),
+                Sequence(LT, FieldValueExp(), push(new RelNode(pop(1, VarNode.class).getVar(), RelNode.Op.LT, pop(ConstNode.class)))),
+                Sequence(LTE, FieldValueExp(), push(new RelNode(pop(1, VarNode.class).getVar(), RelNode.Op.LTE, pop(ConstNode.class)))),
                 isNull(),
                 isNotNull()
         ));
@@ -141,20 +185,21 @@ public class RqlParser extends BaseParser<RqlNode> {
         return Sequence(literal(), push(new ConstNode(match())));
     }
 
-    public Rule isNull(){
-        return Sequence(StringIgnoreCaseWS("is"),StringIgnoreCaseWS("null"),push(new FieldCheckNode(((VarNode)pop()).getVar(),false))).suppressSubnodes().label("is null");
+    public Rule isNull() {
+        return Sequence(StringIgnoreCaseWS("is"), StringIgnoreCaseWS("null"), push(new FieldCheckNode(pop(VarNode.class).getVar(), false))).suppressSubnodes().label("is null");
     }
-    
-    public Rule isNotNull(){
-        return Sequence(StringIgnoreCaseWS("is"),StringIgnoreCaseWS("not"),StringIgnoreCaseWS("null"),push(new FieldCheckNode(((VarNode)pop()).getVar(),true))).suppressSubnodes().label("is not null");
+
+    public Rule isNotNull() {
+        return Sequence(StringIgnoreCaseWS("is"), StringIgnoreCaseWS("not"), StringIgnoreCaseWS("null"),
+                 push(new FieldCheckNode(pop(VarNode.class).getVar(), true))).suppressSubnodes().label("is not null");
     }
-    
+
     public Rule Parens() {
         return Sequence(OB, BooleanExpression(), CB);
     }
 
     public Rule select() {
-        return Sequence(StringIgnoreCaseWS("SELECT"),push(new SelectNode()));
+        return Sequence(StringIgnoreCaseWS("SELECT"), push(new SelectNode()));
     }
 
     public Rule where() {
@@ -186,9 +231,9 @@ public class RqlParser extends BaseParser<RqlNode> {
     }
 
     public Rule selectAll() {
-        return Sequence(ChWS('*'),push(new AllColumnNode()));
+        return Sequence(ChWS('*'), push(new AllColumnNode()));
     }
-     
+
     public Rule ChWS(char c) {
         return Sequence(Ch(c), WS());
     }
@@ -238,7 +283,7 @@ public class RqlParser extends BaseParser<RqlNode> {
                         )
                 ).suppressSubnodes(),
                 '"'
-        ),Sequence(
+        ), Sequence(
                 '\'',
                 ZeroOrMore(
                         FirstOf(
@@ -360,8 +405,7 @@ public class RqlParser extends BaseParser<RqlNode> {
         ParsingResult<?> result = new ReportingParseRunner(parser.selectQuery()).run(rql);
 
         if (result.hasErrors()) {
-            System.out.println("\nParse Errors:\n" + printParseErrors(result));
-            return null;
+            throw new RqlException(printParseErrors(result));
         }
         SelectNode node = (SelectNode) result.resultValue;
         return node;
