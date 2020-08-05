@@ -59,22 +59,22 @@ public class SelectNode implements RqlNode {
             emitFlux = sourceFlux.filter(o -> this.exp.eval(o));
         }
 
-        Flux<List<JsonObject>> fluxList = null;
+        Flux<List<List<JsonObject>>> fluxList = null;
         if (windowNode != null) {
             Flux<Flux<JsonObject>> stream = windowNode.window(emitFlux);
             if (hasAggregates() && groupBy == null) {
-                fluxList = stream.flatMap(f -> f.collectList());
+                fluxList = stream.flatMap(f -> f.collectList().map(l->Collections.singletonList(l)));
             } else if (groupBy != null) {
-                fluxList = groupBy.groupBy(stream).flatMap(f -> f.collectList());
+                fluxList = groupBy.groupBy(stream);
             } else {
-                fluxList = stream.flatMap(f -> f).map(j -> Collections.singletonList(j));
+                fluxList = stream.flatMap(f -> f).map(j -> Collections.singletonList(Collections.singletonList(j)));
             }
 
         } else {
-            fluxList = emitFlux.map(json -> Collections.singletonList(json));
+            fluxList = emitFlux.map(json -> Collections.singletonList(Collections.singletonList(json)));
         }
 
-        emitFlux = fluxList.map(input -> expand(input));
+        emitFlux = fluxList.map(input -> expand(input)).map(list->orderBy != null?orderBy.sort(list):list).flatMapIterable(l->l);
         if (limit > -1) {
             emitFlux = emitFlux.take(limit);
         }
@@ -95,6 +95,8 @@ public class SelectNode implements RqlNode {
             throw new RqlException("columns " + colList.removeAll(groupBy.groupByFields) + " should on the group by list");
         }
 
+        if(orderBy != null)
+            orderBy.complete();
         return this;
     }
 
@@ -115,10 +117,15 @@ public class SelectNode implements RqlNode {
         return this;
     }
 
-    public JsonObject expand(List<JsonObject> Input) {
-        JsonObject out = new JsonObject();
-        columnNodes.forEach(cn -> cn.eval(Input, out));
-        return out;
+    public List<JsonObject> expand(List<List<JsonObject>> Input) {
+        List<JsonObject> list = new LinkedList<>();
+        for(List<JsonObject> l: Input)
+        {
+            JsonObject out = new JsonObject();
+            columnNodes.forEach(cn -> cn.eval(l, out));
+            list.add(out);
+        }      
+        return list;
     }
 
     private Flux<JsonObject> onAggregateStart(Flux<JsonObject> flux) {

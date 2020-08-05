@@ -5,19 +5,46 @@
  */
 package com.cloudimpl.rql;
 
-import java.util.HashSet;
+import com.google.gson.JsonObject;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
  *
  * @author nuwansa
  */
-public class OrderByNode implements RqlNode{
-    private final Set<String> fields = new HashSet<>();
-    
-    public OrderByNode addField(String field)
+public class OrderByNode implements RqlNode,Comparator<JsonObject>{
+    private final Set<OrderByItem> fields = new LinkedHashSet<>();
+    private Comparator<JsonObject> comparator;
+    public OrderByNode addField(OrderByItem field)
     {
-        this.fields.add(field.trim());
+        this.fields.add(field);
         return this;
+    }
+
+    public void complete()
+    {       
+        Comparator comp = null;
+        for(OrderByItem item : fields)
+        {
+            if(comp == null)
+                comp = item;
+            else
+                comp = comp.thenComparing(item);
+        }
+        this.comparator = comp;
+    }
+    @Override
+    public int compare(JsonObject o1, JsonObject o2) {
+        
+        return this.comparator.compare(o1, o2);
+    }
+    
+    public List<JsonObject> sort(List<JsonObject> input)
+    {
+         input.sort(this);
+         return input;
     }
 }

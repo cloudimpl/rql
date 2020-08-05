@@ -14,6 +14,7 @@ import com.cloudimpl.rql.FieldCheckNode;
 import com.cloudimpl.rql.GroupByNode;
 import com.cloudimpl.rql.MaxFunction;
 import com.cloudimpl.rql.MinFunction;
+import com.cloudimpl.rql.OrderByItem;
 import com.cloudimpl.rql.OrderByNode;
 import com.cloudimpl.rql.RelNode;
 import com.cloudimpl.rql.RqlBoolNode;
@@ -56,7 +57,7 @@ public class RqlParser extends BaseParser<RqlNode> {
 
     public Rule selectQuery() {
         return Sequence(select(), selectExpressionList(), fromClause(),
-                 Optional(windowExpression()), whereClause(), Optional(groupByExpression()), Optional(limitExpression()), EOI
+                 Optional(windowExpression()), whereClause(), Optional(groupByExpression()), Optional(orderBy()),Optional(limitExpression()), EOI
                 ,push(pop(SelectNode.class).complete()));
     }
 
@@ -134,14 +135,19 @@ public class RqlParser extends BaseParser<RqlNode> {
                  ZeroOrMore(Sequence(COMMA, Identifier(true), push(pop(GroupByNode.class).addField(match().trim())))));
     }
 
-    Rule orderByExpression(){
-        return Sequence(StringIgnoreCaseWS("order"),StringIgnoreCaseWS("by"),push(new OrderByNode()),orderByList(),push(pop(1, SelectNode.class)
+    Rule orderBy(){
+        return Sequence(StringIgnoreCaseWS("order"),StringIgnoreCaseWS("by"),push(new OrderByNode()),orderByExpression(),push(pop(1, SelectNode.class)
                 .setOrderBy(pop(OrderByNode.class))));
     }
     
-    Rule orderByList() {
-        return Sequence(Identifier(true), push(pop(OrderByNode.class).addField(match().trim())),
-                 ZeroOrMore(Sequence(COMMA, Identifier(true), push(pop(OrderByNode.class).addField(match().trim())))));
+    Rule orderByExpression() {
+        return Sequence(orderByItem(), push(pop(1,OrderByNode.class).addField(pop(OrderByItem.class))),
+                 ZeroOrMore(Sequence(COMMA, orderByItem(), push(pop(1,OrderByNode.class).addField(pop(OrderByItem.class))))));
+    }
+    
+    Rule orderByItem(){
+        return Sequence(Identifier(true),push(new OrderByItem(match(),"ASC")),Optional(FirstOf(StringIgnoreCaseWS("ASC"),StringIgnoreCaseWS("DESC")))
+                ,push(pop(OrderByItem.class).setOrderBy(match())));
     }
     
     <T> T pop(Class<T> cls) {
