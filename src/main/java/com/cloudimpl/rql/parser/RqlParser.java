@@ -6,14 +6,16 @@
 package com.cloudimpl.rql.parser;
 
 import com.cloudimpl.rql.AllColumnNode;
+import com.cloudimpl.rql.functions.AvgFunction;
 import com.cloudimpl.rql.BinNode;
 import com.cloudimpl.rql.ColumRefNode;
 import com.cloudimpl.rql.ColumnNode;
 import com.cloudimpl.rql.ConstNode;
+import com.cloudimpl.rql.functions.CountFunction;
 import com.cloudimpl.rql.FieldCheckNode;
 import com.cloudimpl.rql.GroupByNode;
-import com.cloudimpl.rql.MaxFunction;
-import com.cloudimpl.rql.MinFunction;
+import com.cloudimpl.rql.functions.MaxFunction;
+import com.cloudimpl.rql.functions.MinFunction;
 import com.cloudimpl.rql.OrderByItem;
 import com.cloudimpl.rql.OrderByNode;
 import com.cloudimpl.rql.RelNode;
@@ -21,7 +23,7 @@ import com.cloudimpl.rql.RqlBoolNode;
 import com.cloudimpl.rql.RqlException;
 import com.cloudimpl.rql.RqlNode;
 import com.cloudimpl.rql.SelectNode;
-import com.cloudimpl.rql.SumFunction;
+import com.cloudimpl.rql.functions.SumFunction;
 import com.cloudimpl.rql.TimeUnitNode;
 import com.cloudimpl.rql.VarNode;
 import com.cloudimpl.rql.WindowNode;
@@ -57,8 +59,8 @@ public class RqlParser extends BaseParser<RqlNode> {
 
     public Rule selectQuery() {
         return Sequence(select(), selectExpressionList(), fromClause(),
-                 Optional(windowExpression()), whereClause(), Optional(groupByExpression()), Optional(orderBy()),Optional(limitExpression()), EOI
-                ,push(pop(SelectNode.class).complete()));
+                Optional(windowExpression()), whereClause(), Optional(groupByExpression()), Optional(orderBy()), Optional(limitExpression()), EOI,
+                 push(pop(SelectNode.class).complete()));
     }
 
     Rule selectExpressionList() {
@@ -82,7 +84,7 @@ public class RqlParser extends BaseParser<RqlNode> {
         return FirstOf(
                 literal(),
                 selectFunction(),
-                selectColumnRef()          
+                selectColumnRef()
         );
     }
 
@@ -90,7 +92,9 @@ public class RqlParser extends BaseParser<RqlNode> {
         return FirstOf(
                 maxFunction(),
                 minFunction(),
-                sumFunction()
+                sumFunction(),
+                countFunction(),
+                avgFunction()
         );
     }
 
@@ -99,15 +103,23 @@ public class RqlParser extends BaseParser<RqlNode> {
     }
 
     Rule maxFunction() {
-        return Sequence(IgnoreCase("max"), OB, Identifier(true),push(new MaxFunction(match())), CB).label("max");
+        return Sequence(IgnoreCase("max"), OB, Identifier(true), push(new MaxFunction(match())), CB).label("max");
+    }
+
+    Rule avgFunction() {
+        return Sequence(IgnoreCase("avg"), OB, Identifier(true), push(new AvgFunction(match())), CB).label("avg");
     }
 
     Rule minFunction() {
-        return Sequence(IgnoreCase("min"), OB, Identifier(true),push(new MinFunction(match())), CB).label("min");
+        return Sequence(IgnoreCase("min"), OB, Identifier(true), push(new MinFunction(match())), CB).label("min");
+    }
+
+    Rule countFunction() {
+        return Sequence(IgnoreCase("count"), OB, FirstOf("*", Identifier(true)), push(new CountFunction(match())), CB).label("count");
     }
 
     Rule sumFunction() {
-        return Sequence(IgnoreCase("sum"), OB, Identifier(true),push(new SumFunction(match())), CB).label("sum");
+        return Sequence(IgnoreCase("sum"), OB, Identifier(true), push(new SumFunction(match())), CB).label("sum");
     }
 
     Rule limitExpression() {
@@ -120,8 +132,8 @@ public class RqlParser extends BaseParser<RqlNode> {
 
     Rule windowTumbling() {
         return Sequence(StringIgnoreCaseWS("TUMBLING"), OB, StringIgnoreCaseWS("size"),
-                 IntegerLiteral(), push(new ConstNode(match())), Spacing(), windowTimeUnit(), CB,
-                 push(new WindowTumblingNode(pop(1, ConstNode.class).getValue(), pop(TimeUnitNode.class).getTimeUnit()))
+                IntegerLiteral(), push(new ConstNode(match())), Spacing(), windowTimeUnit(), CB,
+                push(new WindowTumblingNode(pop(1, ConstNode.class).getValue(), pop(TimeUnitNode.class).getTimeUnit()))
         );
     }
 
@@ -132,24 +144,24 @@ public class RqlParser extends BaseParser<RqlNode> {
 
     Rule groupByList() {
         return Sequence(Identifier(true), push(pop(GroupByNode.class).addField(match().trim())),
-                 ZeroOrMore(Sequence(COMMA, Identifier(true), push(pop(GroupByNode.class).addField(match().trim())))));
+                ZeroOrMore(Sequence(COMMA, Identifier(true), push(pop(GroupByNode.class).addField(match().trim())))));
     }
 
-    Rule orderBy(){
-        return Sequence(StringIgnoreCaseWS("order"),StringIgnoreCaseWS("by"),push(new OrderByNode()),orderByExpression(),push(pop(1, SelectNode.class)
+    Rule orderBy() {
+        return Sequence(StringIgnoreCaseWS("order"), StringIgnoreCaseWS("by"), push(new OrderByNode()), orderByExpression(), push(pop(1, SelectNode.class)
                 .setOrderBy(pop(OrderByNode.class))));
     }
-    
+
     Rule orderByExpression() {
-        return Sequence(orderByItem(), push(pop(1,OrderByNode.class).addField(pop(OrderByItem.class))),
-                 ZeroOrMore(Sequence(COMMA, orderByItem(), push(pop(1,OrderByNode.class).addField(pop(OrderByItem.class))))));
+        return Sequence(orderByItem(), push(pop(1, OrderByNode.class).addField(pop(OrderByItem.class))),
+                ZeroOrMore(Sequence(COMMA, orderByItem(), push(pop(1, OrderByNode.class).addField(pop(OrderByItem.class))))));
     }
-    
-    Rule orderByItem(){
-        return Sequence(Identifier(true),push(new OrderByItem(match(),"ASC")),Optional(FirstOf(StringIgnoreCaseWS("ASC"),StringIgnoreCaseWS("DESC")))
-                ,push(pop(OrderByItem.class).setOrderBy(match())));
+
+    Rule orderByItem() {
+        return Sequence(Identifier(true), push(new OrderByItem(match(), "ASC")), Optional(FirstOf(StringIgnoreCaseWS("ASC"), StringIgnoreCaseWS("DESC"))),
+                 push(pop(OrderByItem.class).setOrderBy(match())));
     }
-    
+
     <T> T pop(Class<T> cls) {
         return cls.cast(super.pop());
     }
@@ -210,7 +222,7 @@ public class RqlParser extends BaseParser<RqlNode> {
 
     public Rule isNotNull() {
         return Sequence(StringIgnoreCaseWS("is"), StringIgnoreCaseWS("not"), StringIgnoreCaseWS("null"),
-                 push(new FieldCheckNode(pop(VarNode.class).getVar(), true))).suppressSubnodes().label("is not null");
+                push(new FieldCheckNode(pop(VarNode.class).getVar(), true))).suppressSubnodes().label("is not null");
     }
 
     public Rule Parens() {

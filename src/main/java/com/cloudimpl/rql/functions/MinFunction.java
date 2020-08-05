@@ -3,8 +3,10 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.cloudimpl.rql;
+package com.cloudimpl.rql.functions;
 
+import com.cloudimpl.rql.AggregateColumnNode;
+import com.cloudimpl.rql.RqlException;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
@@ -25,7 +27,7 @@ public class MinFunction extends AggregateColumnNode {
 
 
     @Override
-    void  eval(List<JsonObject> input, JsonObject output) {
+    public void  eval(List<JsonObject> input, JsonObject output) {
         int dataType = dataType(input);
         if(dataType == 1)
         {

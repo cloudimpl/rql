@@ -15,7 +15,7 @@ import java.util.List;
 public class AllColumnNode extends ColumnNode{
 
     @Override
-    void eval(List<JsonObject> input, JsonObject output) {
+    public void eval(List<JsonObject> input, JsonObject output) {
         input.get(0).entrySet().forEach(e->output.add(e.getKey(),e.getValue()));
     }
     

@@ -28,5 +28,5 @@ public abstract class ColumnNode implements RqlNode{
     }
     
     
-    abstract void eval(List<JsonObject> input,JsonObject output);
+    public abstract void eval(List<JsonObject> input,JsonObject output);
 }

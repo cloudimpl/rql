@@ -15,7 +15,7 @@ import java.util.Objects;
  *
  * @author nuwansa
  */
-public class OrderByItem implements RqlNode, Comparator<JsonObject> {
+public class OrderByItem implements RqlNode{
 
     public enum OrderBy {
         ASC, DESC
@@ -23,9 +23,11 @@ public class OrderByItem implements RqlNode, Comparator<JsonObject> {
     private final String fieldName;
     private OrderBy orderBy;
 
+    private final Comparator<JsonObject> comparator;
     public OrderByItem(String fieldName, String orderBy) {
         this.fieldName = fieldName.trim();
         this.orderBy = OrderBy.valueOf(orderBy.trim().toUpperCase());
+        this.comparator = this::compare;
     }
 
     public OrderByItem setOrderBy(String orderBy) {
@@ -35,18 +37,14 @@ public class OrderByItem implements RqlNode, Comparator<JsonObject> {
         return this;
     }
 
-    @Override
-    public int compare(JsonObject o1, JsonObject o2) {
+    public Comparator<JsonObject> getComparator()
+    {
+        return orderBy == OrderBy.DESC? comparator.reversed():comparator;
+    }
+
+    private int compare(JsonObject o1, JsonObject o2) {
         JsonElement left = o1.get(fieldName);
         JsonElement right = o2.get(fieldName);
-        
-        if(orderBy == OrderBy.DESC)
-        {
-           JsonElement temp = left;
-           left = right;
-           right = temp;
-        }
-        
         
         if(left == null && right == null)
             return 0;

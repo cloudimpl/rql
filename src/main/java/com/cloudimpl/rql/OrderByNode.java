@@ -30,9 +30,9 @@ public class OrderByNode implements RqlNode,Comparator<JsonObject>{
         for(OrderByItem item : fields)
         {
             if(comp == null)
-                comp = item;
+                comp = item.getComparator();
             else
-                comp = comp.thenComparing(item);
+                comp = comp.thenComparing(item.getComparator());
         }
         this.comparator = comp;
     }

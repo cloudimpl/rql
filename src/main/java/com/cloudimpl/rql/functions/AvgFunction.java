@@ -3,8 +3,10 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.cloudimpl.rql;
+package com.cloudimpl.rql.functions;
 
+import com.cloudimpl.rql.AggregateColumnNode;
+import com.cloudimpl.rql.RqlException;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
@@ -15,22 +17,20 @@ import java.util.List;
  *
  * @author nuwansa
  */
-public class SumFunction extends AggregateColumnNode {
-
+public class AvgFunction extends AggregateColumnNode{
     private final String columnName;
 
-    public SumFunction(String columnName) {
-        this.columnName = columnName.trim();
+    public AvgFunction(String columnName) {
+        this.columnName = columnName;
     }
-
-
+    
     @Override
-    void  eval(List<JsonObject> input, JsonObject output) {
-        double d = input.stream().filter(json -> json.keySet().contains(columnName)).map(json -> json.get(columnName))
-                .map(el->toVal(el)).mapToDouble(BigDecimal::doubleValue).sum();
+    public void eval(List<JsonObject> input, JsonObject output) {
+         double d = input.stream().filter(json -> json.keySet().contains(columnName)).map(json -> json.get(columnName))
+                .map(el->toVal(el)).mapToDouble(BigDecimal::doubleValue).average().getAsDouble();
         output.addProperty(getAlias(), d);
     }
-
+    
     private BigDecimal toVal(JsonElement el) {
         JsonPrimitive primitive = el.getAsJsonPrimitive();
         if (!primitive.isNumber()) {
