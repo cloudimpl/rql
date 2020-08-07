@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.cloudimpl.rql;
+package com.cloudimpl.rql.nodes;
 
 import com.google.gson.JsonObject;
 import java.time.Duration;
@@ -17,45 +17,22 @@ import reactor.core.publisher.Mono;
  *
  * @author nuwansa
  */
-public class WindowTumblingNode extends WindowNode{
-    private final TimeUnit unit;
-    private final long interval;
+public class WindowHopingNode extends WindowNode{
 
-    public WindowTumblingNode(String interval,TimeUnit unit) {
-        this.unit = unit;
-        this.interval = Long.valueOf(interval);
-    }
-
-    public TimeUnit getUnit() {
-        return unit;
-    }
-
-    public long getInterval() {
-        return interval;
+    private final long advance;
+    private final TimeUnit advanceUnit;
+    public WindowHopingNode(String interval,TimeUnit unit,String advance,TimeUnit advanceUnit) {
+        super(interval, unit);
+        this.advance = Long.valueOf(advance);
+        this.advanceUnit = advanceUnit;
     }
 
     @Override
     public Flux<Flux<JsonObject>> window(Flux<JsonObject> inputFlux) {
-        return inputFlux.window(Duration.ofMillis(intervalToMillis()));           
+        return inputFlux
+                .window(Duration.ofMillis(intervalToMillis(getInterval(),getUnit())),Duration.ofMillis(intervalToMillis(advance,advanceUnit)));           
     }
-    
-    
-    private long intervalToMillis()
-    {
-        switch(unit)
-        {
-            case SECONDS:
-                return interval * 1000;
-            case MINUTES:
-                return interval * 60 * 1000;
-            case HOURS:
-                return interval * 3600 * 1000;
-            case DAYS:
-                return interval * 24 * 3600 * 1000;
-             default:
-                 return -1;
-        }
-    }
+   
     
     
     public static void main(String[] args) throws InterruptedException {

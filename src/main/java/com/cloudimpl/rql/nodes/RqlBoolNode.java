@@ -3,16 +3,14 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.cloudimpl.rql;
+package com.cloudimpl.rql.nodes;
 
 import com.google.gson.JsonObject;
-import reactor.core.publisher.Flux;
 
 /**
  *
  * @author nuwansa
  */
-public abstract class WindowNode implements RqlNode{
-    
-    public abstract Flux<Flux<JsonObject>> window(Flux<JsonObject> inputFlux);
+public interface RqlBoolNode extends RqlNode{
+     public boolean eval(JsonObject val);
 }

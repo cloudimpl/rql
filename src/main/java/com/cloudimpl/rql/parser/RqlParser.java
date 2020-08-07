@@ -5,29 +5,31 @@
  */
 package com.cloudimpl.rql.parser;
 
-import com.cloudimpl.rql.AllColumnNode;
+import com.cloudimpl.rql.nodes.AllColumnNode;
+import com.cloudimpl.rql.nodes.BinNode;
+import com.cloudimpl.rql.nodes.ColumRefNode;
+import com.cloudimpl.rql.nodes.ColumnNode;
+import com.cloudimpl.rql.nodes.ConstNode;
+import com.cloudimpl.rql.nodes.FieldCheckNode;
+import com.cloudimpl.rql.nodes.GroupByNode;
+import com.cloudimpl.rql.nodes.OrderByItem;
+import com.cloudimpl.rql.nodes.OrderByNode;
+import com.cloudimpl.rql.nodes.RelNode;
+import com.cloudimpl.rql.nodes.RqlBoolNode;
+import com.cloudimpl.rql.nodes.RqlException;
+import com.cloudimpl.rql.nodes.RqlNode;
+import com.cloudimpl.rql.nodes.SelectNode;
+import com.cloudimpl.rql.nodes.TimeUnitNode;
+import com.cloudimpl.rql.nodes.VarNode;
+import com.cloudimpl.rql.nodes.WindowHopingNode;
+import com.cloudimpl.rql.nodes.WindowNode;
+import com.cloudimpl.rql.nodes.WindowSessionNode;
+import com.cloudimpl.rql.nodes.WindowTumblingNode;
 import com.cloudimpl.rql.functions.AvgFunction;
-import com.cloudimpl.rql.BinNode;
-import com.cloudimpl.rql.ColumRefNode;
-import com.cloudimpl.rql.ColumnNode;
-import com.cloudimpl.rql.ConstNode;
 import com.cloudimpl.rql.functions.CountFunction;
-import com.cloudimpl.rql.FieldCheckNode;
-import com.cloudimpl.rql.GroupByNode;
 import com.cloudimpl.rql.functions.MaxFunction;
 import com.cloudimpl.rql.functions.MinFunction;
-import com.cloudimpl.rql.OrderByItem;
-import com.cloudimpl.rql.OrderByNode;
-import com.cloudimpl.rql.RelNode;
-import com.cloudimpl.rql.RqlBoolNode;
-import com.cloudimpl.rql.RqlException;
-import com.cloudimpl.rql.RqlNode;
-import com.cloudimpl.rql.SelectNode;
 import com.cloudimpl.rql.functions.SumFunction;
-import com.cloudimpl.rql.TimeUnitNode;
-import com.cloudimpl.rql.VarNode;
-import com.cloudimpl.rql.WindowNode;
-import com.cloudimpl.rql.WindowTumblingNode;
 import org.parboiled.BaseParser;
 import org.parboiled.Parboiled;
 import org.parboiled.Rule;
@@ -127,7 +129,9 @@ public class RqlParser extends BaseParser<RqlNode> {
     }
 
     Rule windowExpression() {
-        return Sequence(StringIgnoreCaseWS("WINDOW"), windowTumbling(), push(pop(1, SelectNode.class).setWindowNode(pop(WindowNode.class))));
+        return Sequence(StringIgnoreCaseWS("WINDOW")
+                , FirstOf(windowTumbling(),windowSession(),windowHoping())
+                , push(pop(1, SelectNode.class).setWindowNode(pop(WindowNode.class))));
     }
 
     Rule windowTumbling() {
@@ -136,7 +140,26 @@ public class RqlParser extends BaseParser<RqlNode> {
                 push(new WindowTumblingNode(pop(1, ConstNode.class).getValue(), pop(TimeUnitNode.class).getTimeUnit()))
         );
     }
+    
+     Rule windowHoping() {
+        return Sequence(StringIgnoreCaseWS("HOPPING"), OB, StringIgnoreCaseWS("size"),
+                IntegerLiteral(), push(new ConstNode(match())), Spacing(), windowTimeUnit()
+                ,COMMA,StringIgnoreCaseWS("ADVANCE"),StringIgnoreCaseWS("BY"),IntegerLiteral()
+                ,push(new ConstNode(match()))
+                ,Spacing(),windowTimeUnit()
+                , CB,
+                push(new WindowHopingNode(pop(3, ConstNode.class).getValue(), pop(2,TimeUnitNode.class).getTimeUnit()
+                ,pop(1, ConstNode.class).getValue(),pop(TimeUnitNode.class).getTimeUnit()))
+        );
+    }
 
+    Rule windowSession() {
+        return Sequence(StringIgnoreCaseWS("SESSION"), OB, 
+                IntegerLiteral(), push(new ConstNode(match())), Spacing(), windowTimeUnit(), CB,
+                push(new WindowSessionNode(pop(1, ConstNode.class).getValue(), pop(TimeUnitNode.class).getTimeUnit()))
+        );
+    }
+    
     Rule groupByExpression() {
         return Sequence(StringIgnoreCaseWS("group"), StringIgnoreCaseWS("by"), push(new GroupByNode()), groupByList(), push(pop(1, SelectNode.class)
                 .setGroupBy(pop(GroupByNode.class))));

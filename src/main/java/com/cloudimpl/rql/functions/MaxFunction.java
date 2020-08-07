@@ -5,8 +5,8 @@
  */
 package com.cloudimpl.rql.functions;
 
-import com.cloudimpl.rql.AggregateColumnNode;
-import com.cloudimpl.rql.RqlException;
+import com.cloudimpl.rql.nodes.AggregateColumnNode;
+import com.cloudimpl.rql.nodes.RqlException;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;

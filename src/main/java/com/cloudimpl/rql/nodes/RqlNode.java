@@ -3,14 +3,12 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.cloudimpl.rql;
-
-import com.google.gson.JsonObject;
+package com.cloudimpl.rql.nodes;
 
 /**
  *
  * @author nuwansa
  */
-public interface RqlBoolNode extends RqlNode{
-     public boolean eval(JsonObject val);
+public interface RqlNode {
+    
 }

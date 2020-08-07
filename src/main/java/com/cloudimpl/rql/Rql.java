@@ -6,6 +6,7 @@
 package com.cloudimpl.rql;
 
 import com.cloudimpl.rql.common.GsonCodec;
+import com.cloudimpl.rql.nodes.SelectNode;
 import com.cloudimpl.rql.parser.RqlParser;
 import com.google.gson.JsonObject;
 import reactor.core.publisher.Flux;
@@ -15,7 +16,7 @@ import reactor.core.publisher.Flux;
  * @author nuwansa
  */
 public class Rql {
-    public static Flux<JsonObject> from(Flux source,String rql)
+    public static Flux<JsonObject> from(Flux<Object> source,String rql)
     {
         SelectNode select = RqlParser.parse(rql);
         Flux<JsonObject> src = source.map(o->GsonCodec.encodeToJson(o).getAsJsonObject());

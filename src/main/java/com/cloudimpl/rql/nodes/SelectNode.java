@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.cloudimpl.rql;
+package com.cloudimpl.rql.nodes;
 
 import com.google.gson.JsonObject;
 import java.util.Collections;
@@ -18,7 +18,6 @@ import reactor.core.publisher.Flux;
  */
 public class SelectNode implements RqlNode {
 
-    private List<Selector> selectors = new LinkedList<>();
     private List<ColumnNode> columnNodes = new LinkedList<>();
     private String tableName;
     private WindowNode windowNode;
@@ -53,6 +52,31 @@ public class SelectNode implements RqlNode {
         return this;
     }
 
+    public RqlBoolNode getExp() {
+        return exp;
+    }
+
+    public GroupByNode getGroupBy() {
+        return groupBy;
+    }
+
+    public long getLimit() {
+        return limit;
+    }
+
+    public OrderByNode getOrderBy() {
+        return orderBy;
+    }
+
+    public WindowNode getWindowNode() {
+        return windowNode;
+    }
+
+    public List<ColumnNode> getColumnNodes() {
+        return columnNodes;
+    }
+
+    
     public Flux<JsonObject> flux(Flux<JsonObject> sourceFlux) {
         Flux<JsonObject> emitFlux = sourceFlux;
         if (exp != null) {
@@ -100,7 +124,7 @@ public class SelectNode implements RqlNode {
         return this;
     }
 
-    private boolean hasAggregates() {
+    public boolean hasAggregates() {
         return this.columnNodes.stream().filter(n -> n instanceof AggregateColumnNode).findAny().orElse(null) != null;
     }
 
@@ -128,18 +152,11 @@ public class SelectNode implements RqlNode {
         return list;
     }
 
-    private Flux<JsonObject> onAggregateStart(Flux<JsonObject> flux) {
-        JsonObject json = new JsonObject();
-        Flux<JsonObject> emitFlux = flux.doOnSubscribe(s -> {
-            json.addProperty("WINDOWSTART", System.currentTimeMillis());
-        });
-
-        return null;
-    }
-
     @Override
     public String toString() {
-        return "ParserNode{" + "selectors=" + selectors + ", tableName=" + tableName + '}';
+        return "SelectNode{" + "columnNodes=" + columnNodes + ", tableName=" + tableName + ", windowNode=" + windowNode + ", exp=" + exp + ", groupBy=" + groupBy + ", orderBy=" + orderBy + ", colIndex=" + colIndex + ", limit=" + limit + '}';
     }
+    
+    
 
 }

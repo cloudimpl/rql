@@ -5,10 +5,18 @@
  */
 package com.cloudimpl.rql;
 
+import reactor.core.publisher.Flux;
+
 /**
  *
  * @author nuwansa
  */
-public interface Selector {
-    Object eval(); 
+public interface RqlEngine {
+
+    void addEvent(Object event);
+    Flux<Object> flux();
+    
+    public static RqlEngine create(String rql) {
+        return new RqlEngineJsonImpl(rql).start();
+    }
 }

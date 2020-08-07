@@ -5,7 +5,7 @@
  */
 package com.cloudimpl.rql.functions;
 
-import com.cloudimpl.rql.AggregateColumnNode;
+import com.cloudimpl.rql.nodes.AggregateColumnNode;
 import com.google.gson.JsonObject;
 import java.util.List;
 

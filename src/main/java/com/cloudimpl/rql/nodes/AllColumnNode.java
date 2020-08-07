@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.cloudimpl.rql;
+package com.cloudimpl.rql.nodes;
 
 import com.google.gson.JsonObject;
 import java.util.List;
@@ -12,17 +12,11 @@ import java.util.List;
  *
  * @author nuwansa
  */
-public class ValueNode extends ColumnNode{
+public class AllColumnNode extends ColumnNode{
 
-    private final String value;
-
-    public ValueNode(String value) {
-        this.value = value;
-    }
-    
     @Override
-    public void eval(List<JsonObject> input,JsonObject output) {
-        output.addProperty(getAlias(), value);
+    public void eval(List<JsonObject> input, JsonObject output) {
+        input.get(0).entrySet().forEach(e->output.add(e.getKey(),e.getValue()));
     }
     
 }

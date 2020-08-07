@@ -3,12 +3,11 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.cloudimpl.rql;
+package com.cloudimpl.rql.nodes;
 
 /**
  *
  * @author nuwansa
  */
-public interface RqlNode {
-    
+public abstract class AggregateColumnNode extends ColumnNode{
 }

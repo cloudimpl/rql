@@ -3,22 +3,17 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.cloudimpl.rql;
+package com.cloudimpl.rql.nodes;
 
 /**
  *
  * @author nuwansa
  */
-public class VarNode implements RqlNode{
-    private final String var;
+public class RqlException extends RuntimeException{
 
-    public VarNode(String var) {
-        this.var = var.trim();
+    public RqlException(String msg) {
+        super(msg);
     }
-
-    public String getVar() {
-        return var;
-    }
-    
+ 
     
 }
